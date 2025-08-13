@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Battery Deal Calculator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- jsPDF for PDF export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- jsPDF-AutoTable for better table support in PDFs -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .input-number {
+            -moz-appearance: textfield;
+        }
+        .input-number::-webkit-outer-spin-button,
+        .input-number::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        /* Custom modal styles */
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            max-width: 90%;
+            width: 400px;
+        }
+        .modal-button {
+            margin-top: 1rem;
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            background-color: #3B82F6;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <div id="custom-alert" class="modal-backdrop hidden">
+        <div class="modal-content">
+            <p id="custom-alert-message"></p>
+            <button id="custom-alert-close" class="modal-button">OK</button>
+        </div>
+    </div>
+
+    <div class="container mx-auto p-4 sm:p-6 lg:p-8">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl sm:text-4xl font-bold text-gray-900">Battery Centre Deal Calculator</h1>
+            <p class="text-gray-600 mt-2">Create and analyze promotional deals.</p>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Left Column: Inputs -->
+            <div class="space-y-8">
+                <!-- Battery Order Section -->
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h2 class="text-2xl font-semibold mb-4 border-b pb-2">1. Battery Order</h2>
+                    <div id="battery-order-list" class="space-y-4">
+                        <!-- Battery items will be dynamically inserted here -->
+                    </div>
+                </div>
+
+                <!-- Accessory Giveaway Section -->
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h2 class="text-2xl font-semibold mb-4 border-b pb-2">2. Free Accessory Giveaway</h2>
+                    <div id="accessory-giveaway-list" class="space-y-4">
+                        <!-- Accessory items will be dynamically inserted here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Summary & Actions -->
+            <div class="space-y-8">
+                <div class="bg-white p-6 rounded-lg shadow-md sticky top-8">
+                    <h2 class="text-2xl font-semibold mb-4 border-b pb-2">3. Deal Summary</h2>
+                    
+                    <!-- Profit Summary -->
+                    <div class="space-y-3 mb-6">
+                        <h3 class="text-lg font-semibold text-gray-700">Profitability Analysis (Internal)</h3>
+                        <div class="flex justify-between items-center bg-gray-50 p-3 rounded-md">
+                            <span class="font-medium">Total Battery Cost:</span>
+                            <span id="total-battery-cost" class="font-bold text-lg text-red-600">R 0.00</span>
+                        </div>
+                        <div class="flex justify-between items-center bg-gray-50 p-3 rounded-md">
+                            <span class="font-medium">Total Battery Revenue:</span>
+                            <span id="total-battery-revenue" class="font-bold text-lg text-green-600">R 0.00</span>
+                        </div>
+                        <div class="flex justify-between items-center bg-green-100 p-3 rounded-md">
+                            <span class="font-medium">Gross Profit (GP):</span>
+                            <span id="gross-profit" class="font-bold text-xl text-green-800">R 0.00</span>
+                        </div>
+                         <div class="flex justify-between items-center bg-green-100 p-3 rounded-md">
+                            <span class="font-medium">Gross Profit Margin:</span>
+                            <span id="gross-profit-margin" class="font-bold text-xl text-green-800">0.00%</span>
+                        </div>
+                    </div>
+
+                    <!-- Giveaway Summary -->
+                    <div class="space-y-3 mb-6">
+                        <h3 class="text-lg font-semibold text-gray-700">Giveaway Impact</h3>
+                        <div class="flex justify-between items-center bg-gray-50 p-3 rounded-md">
+                            <span class="font-medium">Cost of Free Stock (GP Loss):</span>
+                            <span id="giveaway-cost" class="font-bold text-lg text-red-600">R 0.00</span>
+                        </div>
+                        <div class="flex justify-between items-center bg-blue-100 p-3 rounded-md">
+                            <span class="font-medium">Retail Value of Free Stock (Client Incentive):</span>
+                            <span id="giveaway-retail-value" class="font-bold text-xl text-blue-800">R 0.00</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Final Net Profit -->
+                    <div class="border-t pt-4">
+                         <div class="flex justify-between items-center bg-yellow-100 p-4 rounded-md">
+                            <span class="text-xl font-bold">FINAL NET PROFIT:</span>
+                            <span id="net-profit" class="font-bold text-2xl text-yellow-900">R 0.00</span>
+                        </div>
+                    </div>
+
+                    <!-- Export Buttons -->
+                    <div class="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <button id="export-internal" class="w-full bg-gray-700 text-white font-bold py-3 px-4 rounded-lg hover:bg-gray-800 transition duration-300">Export Internal Report (CSV)</button>
+                        <button id="export-client" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition duration-300">Export Client Proposal (PDF)</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { jsPDF } = window.jspdf;
+
+        // --- DATA ---
+        const products = {
+            batteries: [
+                { sku: 'REZ628', name: 'Rez 628', stock: 61, cost: 490.00, price: 640.00 },
+                { sku: 'REZ646', name: 'Rez 646', stock: 146, cost: 495.00, price: 645.00 },
+                { sku: 'REZ652', name: 'Rez 652', stock: 750, cost: 750.00, price: 900.00 },
+            ],
+            accessories: [
+                { sku: 'F6000', name: 'Charger F6000', stock: 893, cost: 370.00, retail: 1173.91 },
+                { sku: 'F1000', name: 'Charger F1000', stock: 426, cost: 143.20, retail: 608.70 },
+                { sku: 'BT-DNP-B', name: 'Terminal Light Duty', stock: 2474, cost: 25.00, retail: 69.57 },
+                { sku: 'BT-SGS-B', name: 'Terminal Heavy Duty', stock: 392, cost: 30.46, retail: 104.35 },
+            ]
+        };
+
+        // --- UI RENDERING ---
+        const batteryListContainer = document.getElementById('battery-order-list');
+        const accessoryListContainer = document.getElementById('accessory-giveaway-list');
+
+        function createProductInput(item, type) {
+            const isBattery = type === 'battery';
+            const priceLabel = isBattery ? 'Price to BC' : 'Retail';
+            const priceValue = isBattery ? item.price : item.retail;
+
+            return `
+                <div class="grid grid-cols-1 sm:grid-cols-6 gap-2 items-center border p-3 rounded-md">
+                    <div class="sm:col-span-3">
+                        <p class="font-semibold">${item.name}</p>
+                        <p class="text-xs text-gray-500">SKU: ${item.sku} | Cost: R${item.cost.toFixed(2)} | ${priceLabel}: R${priceValue.toFixed(2)}</p>
+                    </div>
+                    <label for="${item.sku}-qty" class="sm:col-span-1 text-sm font-medium text-gray-700 sm:text-right">Quantity:</label>
+                    <div class="sm:col-span-2">
+                        <input type="number" id="${item.sku}-qty" data-sku="${item.sku}" data-type="${type}"
+                               class="input-number w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                               min="0" placeholder="0">
+                    </div>
+                </div>
+            `;
+        }
+
+        products.batteries.forEach(item => {
+            batteryListContainer.innerHTML += createProductInput(item, 'battery');
+        });
+
+        products.accessories.forEach(item => {
+            accessoryListContainer.innerHTML += createProductInput(item, 'accessory');
+        });
+
+        // --- CALCULATION LOGIC ---
+        function calculateTotals() {
+            let totalBatteryCost = 0;
+            let totalBatteryRevenue = 0;
+            let giveawayCost = 0;
+            let giveawayRetailValue = 0;
+
+            products.batteries.forEach(item => {
+                const input = document.getElementById(`${item.sku}-qty`);
+                const qty = parseInt(input.value) || 0;
+                totalBatteryCost += qty * item.cost;
+                totalBatteryRevenue += qty * item.price;
+            });
+
+            products.accessories.forEach(item => {
+                const input = document.getElementById(`${item.sku}-qty`);
+                const qty = parseInt(input.value) || 0;
+                giveawayCost += qty * item.cost;
+                giveawayRetailValue += qty * item.retail;
+            });
+
+            const grossProfit = totalBatteryRevenue - totalBatteryCost;
+            const grossProfitMargin = totalBatteryRevenue > 0 ? (grossProfit / totalBatteryRevenue) * 100 : 0;
+            const netProfit = grossProfit - giveawayCost;
+
+            document.getElementById('total-battery-cost').textContent = `R ${totalBatteryCost.toFixed(2)}`;
+            document.getElementById('total-battery-revenue').textContent = `R ${totalBatteryRevenue.toFixed(2)}`;
+            document.getElementById('gross-profit').textContent = `R ${grossProfit.toFixed(2)}`;
+            document.getElementById('gross-profit-margin').textContent = `${grossProfitMargin.toFixed(2)}%`;
+            document.getElementById('giveaway-cost').textContent = `R ${giveawayCost.toFixed(2)}`;
+            document.getElementById('giveaway-retail-value').textContent = `R ${giveawayRetailValue.toFixed(2)}`;
+            document.getElementById('net-profit').textContent = `R ${netProfit.toFixed(2)}`;
+        }
+
+        // --- EVENT LISTENERS ---
+        document.querySelectorAll('input[type="number"]').forEach(input => {
+            input.addEventListener('input', calculateTotals);
+        });
+
+        // --- Custom Alert Modal ---
+        const alertModal = document.getElementById('custom-alert');
+        const alertMessage = document.getElementById('custom-alert-message');
+        const alertClose = document.getElementById('custom-alert-close');
+
+        function showAlert(message) {
+            alertMessage.textContent = message;
+            alertModal.classList.remove('hidden');
+        }
+
+        alertClose.addEventListener('click', () => {
+            alertModal.classList.add('hidden');
+        });
+
+        // --- EXPORT LOGIC ---
+        function getOrderData() {
+            const batteryOrder = products.batteries
+                .map(item => ({...item, qty: parseInt(document.getElementById(`${item.sku}-qty`).value) || 0}))
+                .filter(item => item.qty > 0);
+            
+            const accessoryGiveaway = products.accessories
+                .map(item => ({...item, qty: parseInt(document.getElementById(`${item.sku}-qty`).value) || 0}))
+                .filter(item => item.qty > 0);
+
+            return { batteryOrder, accessoryGiveaway };
+        }
+        
+        function downloadCSV(data, filename) {
+            const csvContent = "data:text/csv;charset=utf-8," + data.map(e => e.join(",")).join("\n");
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", filename);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        document.getElementById('export-internal').addEventListener('click', () => {
+            const { batteryOrder, accessoryGiveaway } = getOrderData();
+            if (batteryOrder.length === 0 && accessoryGiveaway.length === 0) {
+                showAlert("Please add items to the order first.");
+                return;
+            }
+
+            const csvData = [];
+            csvData.push(['INTERNAL REPORT']);
+            csvData.push([]);
+            
+            csvData.push(['--- BATTERY ORDER ---']);
+            csvData.push(['SKU', 'Product', 'Qty', 'Unit Cost', 'Total Cost', 'Unit Price', 'Total Revenue', 'Unit Profit']);
+            let totalCost = 0, totalRevenue = 0;
+            batteryOrder.forEach(item => {
+                const itemTotalCost = item.qty * item.cost;
+                const itemTotalRevenue = item.qty * item.price;
+                totalCost += itemTotalCost;
+                totalRevenue += itemTotalRevenue;
+                csvData.push([item.sku, item.name, item.qty, item.cost.toFixed(2), itemTotalCost.toFixed(2), item.price.toFixed(2), itemTotalRevenue.toFixed(2), (item.price - item.cost).toFixed(2)]);
+            });
+            csvData.push([]);
+            csvData.push(['', '', '', 'Subtotal Cost:', totalCost.toFixed(2), 'Subtotal Revenue:', totalRevenue.toFixed(2)]);
+            const grossProfit = totalRevenue - totalCost;
+            csvData.push(['', '', '', '', '', 'Gross Profit:', grossProfit.toFixed(2)]);
+            csvData.push([]);
+
+            csvData.push(['--- ACCESSORY GIVEAWAY ---']);
+            csvData.push(['SKU', 'Product', 'Qty', 'Unit Cost', 'Total Cost (GP Loss)']);
+            let totalGiveawayCost = 0;
+            accessoryGiveaway.forEach(item => {
+                const itemTotalCost = item.qty * item.cost;
+                totalGiveawayCost += itemTotalCost;
+                csvData.push([item.sku, item.name, item.qty, item.cost.toFixed(2), itemTotalCost.toFixed(2)]);
+            });
+            csvData.push([]);
+            csvData.push(['', '', '', 'Total Giveaway Cost:', totalGiveawayCost.toFixed(2)]);
+            csvData.push([]);
+
+            csvData.push(['--- FINAL SUMMARY ---']);
+            csvData.push(['Gross Profit from Batteries:', grossProfit.toFixed(2)]);
+            csvData.push(['Cost of Giveaway (GP Loss):', totalGiveawayCost.toFixed(2)]);
+            csvData.push(['NET PROFIT ON DEAL:', (grossProfit - totalGiveawayCost).toFixed(2)]);
+
+            downloadCSV(csvData, 'internal_deal_report.csv');
+        });
+
+        document.getElementById('export-client').addEventListener('click', () => {
+            const { batteryOrder, accessoryGiveaway } = getOrderData();
+            if (batteryOrder.length === 0) {
+                showAlert("Please add batteries to the order to create a client proposal.");
+                return;
+            }
+
+            const doc = new jsPDF();
+            let finalY = 0; // To track the Y position on the page
+
+            // --- PDF Header ---
+            doc.setFontSize(20);
+            doc.setFont(undefined, 'bold');
+            doc.text("Global Batteries SA", 14, 20);
+            doc.setFontSize(10);
+            doc.setFont(undefined, 'normal');
+            doc.text(`Date: ${new Date().toLocaleDateString()}`, 14, 28);
+
+            // --- PDF Body ---
+            doc.setFontSize(12);
+            doc.text("Dear Battery Centre,", 14, 45);
+            doc.text("We are pleased to present the following special offer, tailored specifically for your business. We believe this package provides exceptional value and look forward to the possibility of strengthening our partnership.", 14, 52, { maxWidth: 180 });
+
+            // Battery Order Table
+            doc.setFontSize(16);
+            doc.text("Your Battery Order", 14, 75);
+            let totalRevenue = 0;
+            const batteryBody = batteryOrder.map(item => {
+                const total = item.qty * item.price;
+                totalRevenue += total;
+                return [item.sku, item.name, item.qty, `R ${item.price.toFixed(2)}`, `R ${total.toFixed(2)}`];
+            });
+            doc.autoTable({
+                head: [['SKU', 'Product', 'Quantity', 'Unit Price', 'Total']],
+                body: batteryBody,
+                startY: 80,
+                theme: 'grid',
+                headStyles: { fillColor: [41, 128, 185] },
+            });
+            finalY = doc.autoTable.previous.finalY;
+            doc.setFontSize(12);
+            doc.setFont(undefined, 'bold');
+            doc.text(`Order Subtotal: R ${totalRevenue.toFixed(2)}`, 14, finalY + 10);
+            
+            // Free Goods Table
+            if (accessoryGiveaway.length > 0) {
+                doc.setFont(undefined, 'normal');
+                doc.setFontSize(16);
+                doc.text("Your Complimentary Items", 14, finalY + 25);
+                let totalRetailValue = 0;
+                const accessoryBody = accessoryGiveaway.map(item => {
+                    const total = item.qty * item.retail;
+                    totalRetailValue += total;
+                    return [item.name, item.qty, `R ${item.retail.toFixed(2)}`, `R ${total.toFixed(2)}`];
+                });
+                doc.autoTable({
+                    head: [['Product', 'Quantity', 'Unit Retail Value', 'Total Retail Value']],
+                    body: accessoryBody,
+                    startY: finalY + 30,
+                    theme: 'grid',
+                    headStyles: { fillColor: [39, 174, 96] },
+                });
+                finalY = doc.autoTable.previous.finalY;
+                doc.setFontSize(14);
+                doc.setFont(undefined, 'bold');
+                doc.text(`Total FREE Value: R ${totalRetailValue.toFixed(2)}`, 14, finalY + 15);
+            }
+
+            // Notes Section
+            finalY = finalY + (accessoryGiveaway.length > 0 ? 30 : 15);
+            doc.setFontSize(10);
+            doc.setFont(undefined, 'bold');
+            doc.text("Please Note:", 14, finalY);
+            doc.setFont(undefined, 'normal');
+            doc.text("* All prices quoted exclude 15% VAT.", 14, finalY + 5);
+            doc.text("* This offer does not require a scrap battery trade-in.", 14, finalY + 10);
+            
+            // --- PDF Footer ---
+            const pageHeight = doc.internal.pageSize.height;
+            doc.setFontSize(9);
+            doc.text("Global Batteries SA | 6 Voortrekker Street, New Redruth, Alberton", 105, pageHeight - 15, null, null, 'center');
+            doc.text("Contact Drikus: 084 557 2012 / 011 869 2427 | sales@allamericanmuscle.co.za", 105, pageHeight - 10, null, null, 'center');
+
+            doc.save('Client_Proposal_Global_Batteries.pdf');
+        });
+
+        // Initial calculation on load
+        calculateTotals();
+    </script>
+</body>
+</html>
